@@ -1,21 +1,24 @@
-
-class Consumer implements Runnable {
-
-	Thread t;
-	private String substring;
+class Consumer extends Thread {
 	private Storage storage;
+	private String searchFor;
 
-	Consumer(Storage _storage, String _substring) {
-
-		this.storage = _storage;
-		this.substring = _substring;
-
-		t = new Thread(this, "Consumer");
-		t.start();
+	public Consumer(Storage _storage, String _name, String _searchFor) {
+		super(_name);
+		storage = _storage;
+		searchFor = _searchFor;
+		start();
 	}
 
 	public void run() {
-		System.out.println(storage.get(substring));
 
+		try {
+			while (!storage.isEmpty() || !storage.areAllFileRead()) {
+				String temp = storage.get(searchFor);
+				if (temp != null)
+					System.out.println(temp);
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 }

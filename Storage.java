@@ -1,82 +1,74 @@
+import java.io.File;
+import java.util.Stack;
 import java.util.Vector;
-public class Storage {
 
-	
-	private static final int MAX_SIZE = 20;
-	private static Vector<String> storage = new Vector<String>();
+class Storage {
+	private int NUMBER_OF_FILES;
+	private int filesRead;
+	private final int MAX_SIZE = 1000;
+	private Vector<LineInfo> vector = new Vector<>();
 
-	Storage(Vector<String> _storage) {
-		storage = (_storage != null) ? _storage : new Vector<String>();
+	public Storage(Stack<File> _fileStack) {
+		NUMBER_OF_FILES = _fileStack.size();
+		filesRead = 0;
 	}
 
-	private String found(String substring) {
+	private String searchFor(String sub) {
 
-		for (int i = 0; i < storage.size(); i++) {
-
-			if (storage.elementAt(i).contains(substring)) {
-				int j = 0;
-				String fileName = "";
-				while (storage.elementAt(i).charAt(j) != ' ') {
-					fileName = fileName + storage.elementAt(i).charAt(j);
-					j++;
-				}
-
-				substring = fileName + " " + i + storage.elementAt(i).substring(fileName.length());
-
-				storage.removeElementAt(i);
-
-				return substring;
-			}
+		while (!vector.isEmpty() && !vector.elementAt(0).getLine().contains(sub)) {
+			vector.remove(0);
 		}
-		if (storage.size() > 0)
-			storage.removeElement(storage.firstElement());
-		return null;
-	}
-
-	synchronized String get(String substring) {
-
-		String temp = null;
-
-		while ((temp = found(substring)) == null) {
-			try {
-				wait();
-			} catch (InterruptedException e) {
-				System.out.println("InterruptedException caught");
-			}
-		}
-
-		notify();
-		return temp;
-	}
-
-	synchronized void put(String nextLine) {
-		while (storage.size() == MAX_SIZE) {
-			try {
-				wait();
-			} catch (InterruptedException e) {
-				System.out.println("InterruptedException caught");
-			}
-		}
-
-		storage.addElement(nextLine);
-
-		notify();
-	}
-
-	public boolean isFull() {
-		return storage.size() == MAX_SIZE;
-	}
-
-	public void printStorage() {
-
-		if (storage.isEmpty()) {
-			System.out.println("Storage is empty!");
+		if (vector.isEmpty()) {
+			return null;
 		} else {
+			String filePath = vector.elementAt(0).getFile().getPath();
+			long lineNumber = vector.elementAt(0).getLineNumber();
+			String line = vector.elementAt(0).getLine();
 
-			for (int i = 0; i < storage.size(); i++) {
-				System.out.println(storage.elementAt(i) + " ");
-			}
+			vector.remove(0);
+			return filePath + " " + lineNumber + " " + line;
 		}
 	}
 
+	public synchronized void put(File _file, Long _lineNumber, String _line) throws InterruptedException {
+		while (vector.size() == MAX_SIZE) // ? if or while? Works with if same as with while 
+			wait();
+		vector.addElement(new LineInfo(_file, _lineNumber, _line));
+		notify();
+	}
+
+	public void print() {
+		for (int i = 0; i < vector.size(); i++) {
+			System.out.println(vector.get(i).getLine());
+		}
+		if (vector.size() == 0) {
+			System.out.println("Storage is empty!");
+		}
+	}
+
+	public synchronized String get(String sub) throws InterruptedException {
+		String line = "";
+		while (vector.isEmpty() && !areAllFileRead()) {
+			wait();
+		}
+		line = searchFor(sub);
+		notify();
+		return line;
+	}
+
+	public boolean isEmpty() {
+		return vector.size() == 0;
+	}
+
+	public boolean areAllFileRead() {
+		return NUMBER_OF_FILES == filesRead;
+	}
+
+	synchronized public void incrementFilesRead() {
+		filesRead++;
+		notify();
+	}
+	public Vector<LineInfo> getVector(){
+		return vector;
+	}
 }
